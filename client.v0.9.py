@@ -67,7 +67,7 @@ def AllPlayersReady():
 	else:
 		return False
 
-Running = False
+
 pygame.init()
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -93,13 +93,12 @@ else:
 
 # SYNCHED - Continuing
 
-FullScreen = True
+#Half 720p windowed
+# size = width, height = 640, 360 #Make sure background image is same size
+# screen = pygame.display.set_mode(size)
+#Fullscreen 720p
 size = width, height = 1280, 720 #Make sure background image is same size
-#size = width, height = 640, 360 #Make sure background image is same size
-if FullScreen:
-	screen = pygame.display.set_mode(size,pygame.FULLSCREEN)
-else:
-	screen = pygame.display.set_mode(size)
+screen = pygame.display.set_mode(size,pygame.FULLSCREEN)
 
 # #Fonts
 FontSize=height/5
@@ -116,14 +115,14 @@ while (Synched and not Running):
 	log.debug("{0:02}:{1:02}".format(Minute,Second))
 	TimeFont = Font.render("{0:02}:{1:02}".format(Minute,Second),True, White)
 	TimeFontR = TimeFont.get_rect()
-	TimeFontR.center=(width/2,border+(FontSize/2)*2)
+	TimeFontR.center=(width/2,border+(FontSize/2)*3)
 	screen.blit(TimeFont, TimeFontR)
 
 	### BEGIN Player1Ready Status
-	log.debug("GAME WAITING".format(Player1ID))
-	Player1Font = Font.render("GAME WAITING".format(Player1ID),True,Blue)
+	log.debug("Player {} WAITING".format(Player1ID))
+	Player1Font = Font.render("Player {} WAITING".format(Player1ID),True,Green)
 	Player1FontR = Player1Font.get_rect()
-	Player1FontR.center=(width/2,border+(FontSize/2)*4)
+	Player1FontR.center=(width/2,border+(FontSize/2)*5)
 
 	screen.blit(Player1Font, Player1FontR)
 
@@ -163,23 +162,26 @@ while Running:
 	log.debug("{0:02}:{1:02}".format(Minute,Second))
 	TimeFont = Font.render("{0:02}:{1:02}".format(Minute,Second),True, White)
 	TimeFontR = TimeFont.get_rect()
-	TimeFontR.center=(width/2,border+(FontSize/2)*2)
+	TimeFontR.center=(width/2,border+(FontSize/2)*3)
 	screen.blit(TimeFont, TimeFontR)
 
 	### BEGIN Player1Ready Status
 	if Player1Ready:
 		log.debug("Player {} Ready".format(Player1ID))
-		Player1Font = Font.render("Player {} Ready".format(Player1ID),True,Green)
+		Player1Font = Font.render("Player {} Ready".format(Player1ID),True,Blue)
 	else:
 		log.debug("Player {} NOT Ready".format(Player1ID))
 		Player1Font = Font.render("Player {} Not Ready".format(Player1ID),True,Red)
 	Player1FontR = Player1Font.get_rect()
-	Player1FontR.center=(width/2,border+(FontSize/2)*4)
+	Player1FontR.center=(width/2,border+(FontSize/2)*5)
 
 	screen.blit(Player1Font, Player1FontR)
 
 	pygame.display.flip()
 	### END Screen
+
+	if AllPlayersReady():
+		Running=False
 
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
@@ -191,63 +193,29 @@ while Running:
 				pygame.display.set_mode(size, FULLSCREEN)
 
 		if event.type == CLOCKTICK: # count up the clock
+		### BEGIN P1 Data Check
+			rlist, wlist, xlist = select.select([s], [], [], 0.001)
+			for i in rlist:
+				data = i.recv(BUFFER_SIZE)
+				log.info("DATA: {}".format(data))
+				if not data:
+					break
+				elif data == "P1 READY":
+					log.info("Entered Player1Ready")
+					Player1Ready=True
+			### END P1 Data Check
+
+			if Minute == 0:
+				if Second == 0:
+					running = False
 			if Second == 0:
-				if Minute == 0:
-					log.info("MINUTES AND SECONDS == 0")
-					Running = False
-				else:
-					Minute -= 1
-					Second = 59
-			else:
-				Second -= 1
-
-	### BEGIN P1 Data Check
-		rlist, wlist, xlist = select.select([s], [], [], 0.001)
-		for i in rlist:
-			data = i.recv(BUFFER_SIZE)
-			log.info("DATA: {}".format(data))
-			if not data:
-				break
-			elif data == "P1 READY":
-				log.info("Entered Player1Ready")
-				Player1Ready=True
-		### END P1 Data Check
-
-	if AllPlayersReady():
-		Running=False
+				Minute -= 1
+				Second = 60
+			Second -= 1
 
 	Clock.tick(60) # ensures a maximum of 60 frames per Second
 
 while not Running:
-	screen.fill(background)
-
-	log.debug("{0:02}:{1:02}".format(Minute,Second))
-	TimeFont = Font.render("{0:02}:{1:02}".format(Minute,Second),True, White)
-	TimeFontR = TimeFont.get_rect()
-	TimeFontR.center=(width/2,border+(FontSize/2)*2)
-	screen.blit(TimeFont, TimeFontR)
-
-	### BEGIN Player1Ready Status
-	if Player1Ready:
-		log.debug("Player {} Ready".format(Player1ID))
-		log.debug("YOU WIN")
-		Player1Font = Font.render("Player {} Ready".format(Player1ID),True,Green)
-		GoalFont = Font.render("YOU WIN",True,Green)
-	else:
-		log.debug("Player {} NOT Ready".format(Player1ID))
-		log.debug("GAME OVER")
-		Player1Font = Font.render("Player {} Not Ready".format(Player1ID),True,Red)
-		GoalFont = Font.render("GAME OVER",True,Red)
-	Player1FontR = Player1Font.get_rect()
-	GoalFontR = GoalFont.get_rect()
-	Player1FontR.center=(width/2,border+(FontSize/2)*4)
-	GoalFontR.center=(width/2,border+(FontSize/2)*6)
-
-	screen.blit(Player1Font, Player1FontR)
-	screen.blit(GoalFont, GoalFontR)
-
-	pygame.display.flip()
-	### END Screen
 	### BEGIN P1 Data Check
 	rlist, wlist, xlist = select.select([s], [], [], 0.001)
 

@@ -49,7 +49,6 @@ BTN = {
 }
 
 # === END CONSTANTS ===
-Running = False
 pygame.init()
 
 ### GET NES Controller
@@ -64,14 +63,13 @@ for Joystick in Joysticks:
 	if "NES" in Joystick.get_name():
 		j = Joystick
 		j.init()
+		Running = True
 		break
-try:
-	log.info("Enabled joystick: {}".format(j.get_name()))
-except:
+if not Running:
 	log.critical("NES Joystick not found!")
 	sys.exit()
 
-
+log.info("Enabled joystick: {}".format(j.get_name()))
 
 # ### GET socket
 
@@ -81,9 +79,9 @@ s.bind((HOST, PORT))
 s.listen(1)
 
 ### Synchronize session
-Running = False
 Connected = False
 Synched = False
+Running = False
 
 Player1Sync="P1 INIT"
 Player2Sync="P2 INIT"
@@ -175,14 +173,11 @@ def AllPlayersReady():
 		return False
 
 #Half 720p windowed
-
-FullScreen = True
+# size = width, height = 640, 360 #Make sure background image is same size
+# screen = pygame.display.set_mode(size)
+#Fullscreen 720p
 size = width, height = 1280, 720 #Make sure background image is same size
-#size = width, height = 640, 360 #Make sure background image is same size
-if FullScreen:
-	screen = pygame.display.set_mode(size,pygame.FULLSCREEN)
-else:
-	screen = pygame.display.set_mode(size)
+screen = pygame.display.set_mode(size,pygame.FULLSCREEN)
 
 # #Fonts
 FontSize = height/5
@@ -192,19 +187,20 @@ border = height/20
 background=Purple
 
 while (Synched and not Running):
+	 # Screen
 	 screen.fill(background)
 
 	 log.debug("{0:02}:{1:02}".format(Minute,Second))
 	 TimeFont = Font.render("{0:02}:{1:02}".format(Minute,Second),True, White)
 	 TimeFontR = TimeFont.get_rect()
-	 TimeFontR.center=(width/2,border+(FontSize/2)*2)
+	 TimeFontR.center=(width/2,border+(FontSize/2)*3)
 	 screen.blit(TimeFont, TimeFontR)
 
 	 ### BEGIN Player1Ready Status
-	 log.debug("GAME WAITING".format(Player1ID))
-	 Player1Font = Font.render("GAME WAITING".format(Player1ID),True,Blue)
+	 log.debug("Player {} WAITING".format(Player1ID))
+	 Player1Font = Font.render("Player {} WAITING".format(Player1ID),True,Green)
 	 Player1FontR = Player1Font.get_rect()
-	 Player1FontR.center=(width/2,border+(FontSize/2)*4)
+	 Player1FontR.center=(width/2,border+(FontSize/2)*5)
 
 	 screen.blit(Player1Font, Player1FontR)
 
@@ -236,28 +232,33 @@ CLOCKTICK = pygame.USEREVENT+1
 pygame.time.set_timer(CLOCKTICK, 1000) # fired once every Second
 
 while Running:
+
+	# Screen
 	screen.fill(background)
 
 	log.debug("{0:02}:{1:02}".format(Minute,Second))
 	TimeFont = Font.render("{0:02}:{1:02}".format(Minute,Second),True, White)
 	TimeFontR = TimeFont.get_rect()
-	TimeFontR.center=(width/2,border+(FontSize/2)*2)
+	TimeFontR.center=(width/2,border+(FontSize/2)*3)
 	screen.blit(TimeFont, TimeFontR)
 
 	### BEGIN Player1Ready Status
 	if Player1Ready:
 		log.debug("Player {} Ready".format(Player1ID))
-		Player1Font = Font.render("Player {} Ready".format(Player1ID),True,Green)
+		Player1Font = Font.render("Player {} Ready".format(Player1ID),True,Blue)
 	else:
 		log.debug("Player {} NOT Ready".format(Player1ID))
 		Player1Font = Font.render("Player {} Not Ready".format(Player1ID),True,Red)
 	Player1FontR = Player1Font.get_rect()
-	Player1FontR.center=(width/2,border+(FontSize/2)*4)
+	Player1FontR.center=(width/2,border+(FontSize/2)*5)
 
 	screen.blit(Player1Font, Player1FontR)
 
 	pygame.display.flip()
 	### END Screen
+
+	if AllPlayersReady():
+		Running=False
 
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
@@ -270,15 +271,15 @@ while Running:
 				pygame.display.set_mode(size, FULLSCREEN)
 
 		if event.type == CLOCKTICK: # count up the clock
+			if Minute == 0:
+				if Second == 0:
+					done = True
+					pygame.quit()
 			if Second == 0:
-				if Minute == 0:
-					log.info("MINUTES AND SECONDS == 0")
-					Running = False
-				else:
-					Minute -= 1
-					Second = 59
-			else:
-				Second -= 1
+				Minute -= 1
+				Second = 60
+
+			Second -= 1
 
 		if event.type == JOYAXISMOTION: # 7
 			x, y = j.get_axis(0), j.get_axis(1)
@@ -303,64 +304,30 @@ while Running:
 			else:
 				log.info("Button: Unknown up")
 
-	if AllPlayersReady():
-		log.info("AllPlayersReady")
-		Running=False
-
 	Clock.tick(60) # ensures a maximum of 60 frames per Second
 
 while not Running:
-	screen.fill(background)
-
-	log.debug("{0:02}:{1:02}".format(Minute,Second))
-	TimeFont = Font.render("{0:02}:{1:02}".format(Minute,Second),True, White)
-	TimeFontR = TimeFont.get_rect()
-	TimeFontR.center=(width/2,border+(FontSize/2)*2)
-	screen.blit(TimeFont, TimeFontR)
-
-	### BEGIN Player1Ready Status
-	if Player1Ready:
-		log.debug("Player {} Ready".format(Player1ID))
-		log.debug("YOU WIN")
-		Player1Font = Font.render("Player {} Ready".format(Player1ID),True,Green)
-		GoalFont = Font.render("YOU WIN",True,Green)
-	else:
-		log.debug("Player {} NOT Ready".format(Player1ID))
-		log.debug("GAME OVER")
-		Player1Font = Font.render("Player {} Not Ready".format(Player1ID),True,Red)
-		GoalFont = Font.render("GAME OVER",True,Red)
-	Player1FontR = Player1Font.get_rect()
-	GoalFontR = GoalFont.get_rect()
-	Player1FontR.center=(width/2,border+(FontSize/2)*4)
-	GoalFontR.center=(width/2,border+(FontSize/2)*6)
-
-	screen.blit(Player1Font, Player1FontR)
-	screen.blit(GoalFont, GoalFontR)
-
-	pygame.display.flip()
-	### END Screen
-
-	for event in pygame.event.get():
-		if event.type == pygame.QUIT:
-			log.info(QuitGame)
-			conn.send(QuitGame)
-			pygame.quit()
-			sys.exit(1)
-		elif (event.type == KEYDOWN and event.key == K_f):
-			if screen.get_flags() & FULLSCREEN:
-				pygame.display.set_mode(size)
-			else:
-				pygame.display.set_mode(size, FULLSCREEN)
-		elif event.type == JOYBUTTONDOWN: # 10
-			if event.button in BTN:
-				print('Button: {} down').format(BTN[event.button])
-				if start_stop(BTN[event.button]):
-					pygame.quit()
-					sys.exit()
-			else:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            log.info(QuitGame)
+            conn.send(QuitGame)
+            pygame.quit()
+            sys.exit(1)
+        elif (event.type == KEYDOWN and event.key == K_f):
+            if screen.get_flags() & FULLSCREEN:
+                pygame.display.set_mode(size)
+            else:
+                pygame.display.set_mode(size, FULLSCREEN)
+        elif event.type == JOYBUTTONDOWN: # 10
+            if event.button in BTN:
+                print('Button: {} down').format(BTN[event.button])
+                if start_stop(BTN[event.button]):
+                    pygame.quit()
+                    sys.exit()
+            else:
 				print("Button: Unknown down")
-		elif event.type == JOYBUTTONUP: # 11
-			if event.button in BTN:
-				print('Button: {} up').format(BTN[event.button])
-			else:
-				print("Button: Unknown up")
+        elif event.type == JOYBUTTONUP: # 11
+            if event.button in BTN:
+                print('Button: {} up').format(BTN[event.button])
+            else:
+                print("Button: Unknown up")
